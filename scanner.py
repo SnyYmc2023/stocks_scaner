@@ -12,8 +12,8 @@ TEMEL_DATA_URL = "https://raw.githubusercontent.com/SinanYMC/bist_analiz/refs/he
 
 def scan_symbols(symbols, ema_short=20, ema_long=50, wma_short=20, wma_long=50, threshold=0.5, volume_threshold=10):
     """Sembolleri tarar ve EMA/WMA kesişim sonuçlarını toplar."""
-    # Temel verileri yükleyin
-    temel_data = pd.read_csv(TEMEL_DATA_URL, sep='\\t')
+    # Temel verileri yükleyin (engine='python' ile uyarıyı önlüyoruz)
+    temel_data = pd.read_csv(TEMEL_DATA_URL, sep='\\t', engine='python')
 
     ema_results = []
     wma_results = []
