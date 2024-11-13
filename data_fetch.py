@@ -17,7 +17,7 @@ SYMBOL_GROUP_URLS = {
     "yildizpazar": "https://raw.githubusercontent.com/SinanYMC/bist_analiz/refs/heads/main/yildizpazar.txt"
 }
 
-def get_symbols(group="anapazar"):
+def get_symbols(group="tümü"):
     """Belirtilen grup için sembolleri getirir."""
     if group in SYMBOL_GROUP_URLS:
         url = SYMBOL_GROUP_URLS[group]
