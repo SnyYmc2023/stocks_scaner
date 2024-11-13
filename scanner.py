@@ -4,6 +4,7 @@ from data_fetch import fetch_data
 from indicators import check_ema_crossover_near, check_wma_crossover_near, calculate_hma
 import pandas as pd
 import logging
+from tqdm import tqdm
 
 logger = logging.getLogger()
 
@@ -20,7 +21,8 @@ def scan_symbols(symbols, ema_short=20, ema_long=50, wma_short=20, wma_long=50, 
     near_wma_results = []
     hma_results = []
     
-    for symbol in symbols:
+    # tqdm ile ilerleme çubuğu ekleme
+    for symbol in tqdm(symbols, desc="Processing Symbols"):
         data = fetch_data(symbol)
         if data is None:
             continue
