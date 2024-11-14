@@ -1,6 +1,7 @@
 # indicators.py
 
 import pandas as pd
+import numpy as np
 
 def check_ema_crossover_near(data, short_period, long_period, threshold=0.5):
     """EMA kısa ve uzun periyotları için kesişime yakın kontrol"""
@@ -12,20 +13,30 @@ def check_ema_crossover_near(data, short_period, long_period, threshold=0.5):
 
 def check_wma_crossover_near(data, short_period, long_period, threshold=0.5):
     """WMA kısa ve uzun periyotları için kesişime yakın kontrol"""
-    data['WMA_Short'] = data['close'].rolling(window=short_period).apply(lambda x: (pd.Series(x).cumsum() * pd.Series(range(1, short_period + 1)).sum()) / short_period)
-    data['WMA_Long'] = data['close'].rolling(window=long_period).apply(lambda x: (pd.Series(x).cumsum() * pd.Series(range(1, long_period + 1)).sum()) / long_period)
+    data['WMA_Short'] = calculate_wma(data['close'], short_period)
+    data['WMA_Long'] = calculate_wma(data['close'], long_period)
     data['BullishCross'] = (data['WMA_Short'] > data['WMA_Long']) & (data['WMA_Short'].shift(1) <= data['WMA_Long'].shift(1))
     data['NearCross'] = (abs(data['WMA_Short'] - data['WMA_Long']) <= threshold)
     return data
 
-def calculate_hma(data, period):
+def calculate_hma(series, period):
     """Hull Moving Average (HMA) hesaplama"""
-    return data.rolling(window=period).apply(lambda x: (2 * x.rolling(window=period // 2).mean() - x.rolling(window=period).mean()).mean())
+    half_length = int(period / 2)
+    sqrt_length = int(np.sqrt(period))
+    wma_half = calculate_wma(series, half_length)
+    wma_full = calculate_wma(series, period)
+    raw_hma = 2 * wma_half - wma_full
+    return calculate_wma(raw_hma, sqrt_length)
 
-def calculate_ema(data, period):
+def calculate_wma(series, period):
+    """Weighted Moving Average (WMA) hesaplama"""
+    weights = np.arange(1, period + 1)
+    return series.rolling(period).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True)
+
+def calculate_ema(series, period):
     """Exponential Moving Average (EMA) hesaplama"""
-    return data.ewm(span=period, adjust=False).mean()
+    return series.ewm(span=period, adjust=False).mean()
 
-def calculate_sma(data, period):
+def calculate_sma(series, period):
     """Simple Moving Average (SMA) hesaplama"""
-    return data.rolling(window=period).mean()
+    return series.rolling(window=period).mean()
