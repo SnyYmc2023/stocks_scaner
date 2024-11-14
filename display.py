@@ -1,15 +1,22 @@
-# display.py
-
-import pandas as pd
 from tabulate import tabulate
+import pandas as pd
 
-def display_results(results, title, max_results=None):
-    """Sonuçları tablo formatında gösterir."""
-    df = pd.DataFrame(results)
-    if not df.empty:
-        if 'Volume' in df.columns:
-            df['Volume'] = df['Volume'].apply(lambda x: f"{x:,.0f}")  # Bindelik ayraç ile gösterim
-        if max_results:
-            df = df.sort_values(by="Volume", ascending=False).head(max_results)
-        print(f"\n{title}\n")
-        print(tabulate(df, headers='keys', tablefmt='fancy_grid', showindex=False))
+def process_and_send_results(result_df, title):
+    if not result_df.empty:
+        # Volume değerlerini sayıya çevir ve bindelik ayraçla biçimlendir
+        if 'Volume' in result_df.columns:
+            result_df['Volume'] = pd.to_numeric(result_df['Volume'], errors='coerce').fillna(0).astype(float)
+            result_df['Volume'] = result_df['Volume'].apply(lambda x: f"{x:,.0f}")
+        
+        # Tablo formatında çıktıyı konsola yazdırma
+        display_results(result_df, title)
+        
+        # Telegram için mesajı tablo formatında oluşturma
+        headers = result_df.columns.to_list()
+        table_str = tabulate(result_df, headers=headers, tablefmt="grid", showindex=False)
+        
+        # Telegram mesajı başlığı ile birleştirme
+        message = f"=== {title} ===\n\n<pre>{table_str}</pre>"
+        
+        # Mesajı Telegram'a gönderme
+        send_telegram_message(message)
