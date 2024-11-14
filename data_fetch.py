@@ -6,19 +6,8 @@ import logging
 
 logger = logging.getLogger()
 
-def create_tv_instance(tv_token=None, username=None, password=None):
-    """TvDatafeed nesnesini token veya kimlik bilgileriyle oluşturur."""
-    if tv_token:
-        # Token kullanarak canlı veri akışı
-        tv = TvDatafeed()
-        tv.token = tv_token
-    elif username and password:
-        # Kimlik bilgileriyle oturum açma
-        tv = TvDatafeed(username=username, password=password)
-    else:
-        # Eğer kimlik bilgileri veya token yoksa anonim olarak oturum aç
-        tv = TvDatafeed()
-    return tv
+# TvDatafeed başlatma (kimlik bilgileri olmadan anonim giriş)
+#tv = TvDatafeed()
 
 # Sembol grupları için URL'ler
 SYMBOL_GROUP_URLS = {
@@ -29,25 +18,21 @@ SYMBOL_GROUP_URLS = {
     "yildizpazar": "https://raw.githubusercontent.com/SinanYMC/bist_analiz/refs/heads/main/yildizpazar.txt"
 }
 
-def get_symbols(group="tümü", tv_token=None, username=None, password=None):
+def get_symbols(group="tümü"):
     """Belirtilen grup için sembolleri getirir."""
-    tv = create_tv_instance(tv_token, username, password)
-    if group in SYMBOL_GROUP_URLS:
+    if group == "tümü":
+        all_symbols = tv.get_all_symbols(exchange="turkey")
+        return [symbol for symbol in all_symbols if 'BIST:' in symbol]
+    elif group in SYMBOL_GROUP_URLS:
         url = SYMBOL_GROUP_URLS[group]
         symbols = pd.read_csv(url, header=None)[0].tolist()
         return [f'BIST:{symbol}' for symbol in symbols]
-    elif group == "tümü":
-        logger.warning("Tüm semboller için liste sağlanamıyor. Lütfen bir grup belirtin.")
-        return []
     else:
-        logger.warning(f"Geçersiz grup '{group}'. Varsayılan olarak BIST30 kullanılıyor.")
-        url = SYMBOL_GROUP_URLS["bist30"]
-        symbols = pd.read_csv(url, header=None)[0].tolist()
-        return [f'BIST:{symbol}' for symbol in symbols]
+        logger.warning(f"Geçersiz grup '{group}'. Varsayılan olarak tüm semboller kullanılacak.")
+        return get_symbols("tümü")
 
-def fetch_data(symbol, n_bars=100, interval=Interval.in_daily, tv_token=None, username=None, password=None):
+def fetch_data(symbol, n_bars=100, interval=Interval.in_daily):
     """Belirtilen sembol için veri çeker."""
-    tv = create_tv_instance(tv_token, username, password)
     try:
         data = tv.get_hist(symbol=symbol, exchange="BIST", interval=interval, n_bars=n_bars)
         return data.reset_index()
