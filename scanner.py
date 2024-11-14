@@ -1,7 +1,7 @@
 # scanner.py
 
 from data_fetch import fetch_data
-from indicators import calculate_ema, calculate_sma, calculate_wma, calculate_adx, calculate_macd, calculate_rsi, calculate_fibonacci_levels
+from indicators import check_ema_crossover_near, check_wma_crossover_near, calculate_hma, calculate_ema, calculate_sma
 import pandas as pd
 import logging
 from tqdm import tqdm
@@ -10,84 +10,126 @@ logger = logging.getLogger()
 
 def scan_symbols(symbols, ema_short=20, ema_long=50, wma_short=20, wma_long=50, hma_short=7, hma_long=200, threshold=0.5, volume_threshold=10):
     """Sembolleri tarar ve EMA/WMA/HMA kesişim sonuçlarını toplar."""
+    
+    # Temel verileri yükleme
+    TEMEL_DATA_URL = "https://raw.githubusercontent.com/SinanYMC/bist_analiz/refs/heads/main/temel.txt"
+    temel_data = pd.read_csv(TEMEL_DATA_URL, sep='\\t', engine='python')
+    
     ema_results = []
     wma_results = []
     near_ema_results = []
     near_wma_results = []
     hma_results = []
+    ema_13_34_results = []
     
-    # tqdm ile ilerleme çubuğu ekleme
     for symbol in tqdm(symbols, desc="Processing Symbols"):
         data = fetch_data(symbol)
         if data is None:
             continue
 
-        # EMA Taraması ve Near Crossover kontrolü
-        data['EMA_Short'] = calculate_ema(data['close'], ema_short)
-        data['EMA_Long'] = calculate_ema(data['close'], ema_long)
-        data['BullishCross'] = (data['EMA_Short'] > data['EMA_Long']) & (data['EMA_Short'].shift(1) <= data['EMA_Long'].shift(1))
-        data['NearCross'] = (abs(data['EMA_Short'] - data['EMA_Long']) <= threshold)
-        ema_last_row = data.iloc[-1]
-        
+        # Sembolden "BIST:" kısmını kaldır
+        symbol_code = symbol.split(':')[1]
+        temel_info = temel_data[temel_data['Sembol'] == symbol_code]
+
+        # Eğer temel veriler mevcutsa hesaplamaları yap
+        if not temel_info.empty:
+            piyasa_degeri = temel_info['Piyasa Değeri'].values[0]
+            defter_degeri = temel_info['Defter Değeri'].values[0]
+            toplam_hisse_sayisi = temel_info['Toplam Hisse Sayısı'].values[0]
+            net_kar = temel_info['Net Kar (Son 4Ç)'].values[0]
+            guncel_fiyat = data['close'].iloc[-1]
+            hacim = data['volume'].iloc[-1] if 'volume' in data.columns else 0
+            
+            # PD/DD ve F/K hesaplamaları
+            pd_dd = round(piyasa_degeri / defter_degeri, 2) if defter_degeri != 0 else None
+            eps = net_kar / toplam_hisse_sayisi if toplam_hisse_sayisi != 0 else None
+            fk = round(guncel_fiyat / eps, 2) if eps is not None else None
+        else:
+            pd_dd = None
+            fk = None
+
+        # EMA Taraması
+        ema_data = check_ema_crossover_near(data.copy(), ema_short, ema_long, threshold)
+        ema_last_row = ema_data.iloc[-1]
+
         if ema_last_row['BullishCross']:
             ema_results.append({
                 'Symbol': symbol, 
-                'Last Price': ema_last_row['close'], 
-                'Date': ema_last_row['datetime']
+                'Last Price': guncel_fiyat, 
+                'Date': ema_last_row['datetime'], 
+                'PD/DD': pd_dd, 
+                'F/K': fk
             })
-        elif ema_last_row['NearCross'] and ema_last_row.get('volume', 0) >= volume_threshold:
+        elif ema_last_row['NearCross'] and hacim >= volume_threshold:
             near_ema_results.append({
                 'Symbol': symbol, 
-                'Last Price': ema_last_row['close'], 
-                'Date': ema_last_row['datetime'],
-                'Volume': ema_last_row.get('volume', 0)
+                'Last Price': guncel_fiyat, 
+                'Date': ema_last_row['datetime'], 
+                'PD/DD': pd_dd, 
+                'F/K': fk, 
+                'Volume': hacim
             })
 
-        # WMA Taraması ve Near Crossover kontrolü
-        data['WMA_Short'] = calculate_wma(data['close'], wma_short)
-        data['WMA_Long'] = calculate_wma(data['close'], wma_long)
-        data['BullishWmaCross'] = (data['WMA_Short'] > data['WMA_Long']) & (data['WMA_Short'].shift(1) <= data['WMA_Long'].shift(1))
-        data['NearWmaCross'] = (abs(data['WMA_Short'] - data['WMA_Long']) <= threshold)
-        wma_last_row = data.iloc[-1]
-        
-        if wma_last_row['BullishWmaCross']:
+        # WMA Taraması
+        wma_data = check_wma_crossover_near(data.copy(), wma_short, wma_long, threshold)
+        wma_last_row = wma_data.iloc[-1]
+
+        if wma_last_row['BullishCross']:
             wma_results.append({
                 'Symbol': symbol, 
                 'Last Price': wma_last_row['close'], 
-                'Date': wma_last_row['datetime']
+                'Date': wma_last_row['datetime'], 
+                'PD/DD': pd_dd, 
+                'F/K': fk
             })
-        elif wma_last_row['NearWmaCross'] and wma_last_row.get('volume', 0) >= volume_threshold:
+        elif wma_last_row['NearCross'] and hacim >= volume_threshold:
             near_wma_results.append({
                 'Symbol': symbol, 
                 'Last Price': wma_last_row['close'], 
-                'Date': wma_last_row['datetime'],
-                'Volume': wma_last_row.get('volume', 0)
+                'Date': wma_last_row['datetime'], 
+                'PD/DD': pd_dd, 
+                'F/K': fk, 
+                'Volume': hacim
             })
 
         # HMA Kesişimi
-        data['HMA_Short'] = calculate_wma(data['close'], hma_short)
-        data['HMA_Long'] = calculate_wma(data['close'], hma_long)
+        data['HMA_Short'] = calculate_hma(data['close'], hma_short)
+        data['HMA_Long'] = calculate_hma(data['close'], hma_long)
         data['BullishHMACross'] = (data['HMA_Short'] > data['HMA_Long']) & (data['HMA_Short'].shift(1) <= data['HMA_Long'].shift(1))
         hma_last_row = data.iloc[-1]
-        
+
         if hma_last_row['BullishHMACross']:
             hma_results.append({
                 'Symbol': symbol, 
                 'Last Price': hma_last_row['close'], 
                 'Date': hma_last_row['datetime'], 
+                'PD/DD': pd_dd, 
+                'F/K': fk, 
                 'Signal': '7 HMA crossed above 200 HMA'
             })
 
-    # Sonuçları döndürme
+        # 13/34 EMA Crossover Taraması
+        ema_13_34_data = check_ema_crossover_13_34(data.copy())
+        ema_13_34_last_row = ema_13_34_data.iloc[-1]
+        
+        if ema_13_34_last_row['Condition']:
+            ema_13_34_results.append({
+                'Symbol': symbol,
+                'Last Price': ema_13_34_last_row['close'],
+                'Date': ema_13_34_last_row['datetime'],
+                'PD/DD': pd_dd,
+                'F/K': fk
+            })
+
     return {
         'ema': pd.DataFrame(ema_results),
         'near_ema': pd.DataFrame(near_ema_results),
         'wma': pd.DataFrame(wma_results),
         'near_wma': pd.DataFrame(near_wma_results),
-        'hma': pd.DataFrame(hma_results)
+        'hma': pd.DataFrame(hma_results),
+        'ema_13_34': pd.DataFrame(ema_13_34_results)
     }
 
-# 13/34 EMA Crossover kontrol fonksiyonu
 def check_ema_crossover_13_34(data):
     """13/34 EMA Crossover stratejisini kontrol eder."""
     data['EMA13'] = calculate_ema(data['close'], 13)
