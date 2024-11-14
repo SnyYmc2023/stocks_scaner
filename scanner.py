@@ -8,13 +8,11 @@ from tqdm import tqdm
 
 logger = logging.getLogger()
 
-# Temel verileri çekmek için URL
-TEMEL_DATA_URL = "https://raw.githubusercontent.com/SinanYMC/bist_analiz/refs/heads/main/temel.txt"
-
-def scan_symbols(tv, symbols, ema_short=20, ema_long=50, wma_short=20, wma_long=50, hma_short=7, hma_long=200, threshold=0.5, volume_threshold=10):
+def scan_symbols(symbols, ema_short=20, ema_long=50, wma_short=20, wma_long=50, hma_short=7, hma_long=200, threshold=0.5, volume_threshold=10):
     """Sembolleri tarar ve EMA/WMA/HMA kesişim sonuçlarını toplar."""
     
     # Temel verileri yükleme
+    TEMEL_DATA_URL = "https://raw.githubusercontent.com/SinanYMC/bist_analiz/refs/heads/main/temel.txt"
     temel_data = pd.read_csv(TEMEL_DATA_URL, sep='\\t', engine='python')
     
     ema_results = []
@@ -25,7 +23,7 @@ def scan_symbols(tv, symbols, ema_short=20, ema_long=50, wma_short=20, wma_long=
     
     # tqdm ile ilerleme çubuğu ekleme
     for symbol in tqdm(symbols, desc="Processing Symbols"):
-        data = fetch_data(tv, symbol)
+        data = fetch_data(symbol)  # tv parametresi artık gerekli değil
         if data is None:
             continue
 
