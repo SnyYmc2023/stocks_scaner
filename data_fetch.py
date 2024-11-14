@@ -1,10 +1,13 @@
 # data_fetch.py
 
 import pandas as pd
-from tvDatafeed import Interval
+from tvDatafeed import TvDatafeed, Interval
 import logging
 
 logger = logging.getLogger()
+
+# TvDatafeed başlatma (kimlik bilgileri olmadan anonim giriş)
+tv = TvDatafeed()
 
 # Sembol grupları için URL'ler
 SYMBOL_GROUP_URLS = {
@@ -15,7 +18,7 @@ SYMBOL_GROUP_URLS = {
     "yildizpazar": "https://raw.githubusercontent.com/SinanYMC/bist_analiz/refs/heads/main/yildizpazar.txt"
 }
 
-def get_symbols(tv, group="tümü"):
+def get_symbols(group="tümü"):
     """Belirtilen grup için sembolleri getirir."""
     if group == "tümü":
         all_symbols = tv.get_all_symbols(exchange="turkey")
@@ -26,9 +29,9 @@ def get_symbols(tv, group="tümü"):
         return [f'BIST:{symbol}' for symbol in symbols]
     else:
         logger.warning(f"Geçersiz grup '{group}'. Varsayılan olarak tüm semboller kullanılacak.")
-        return get_symbols(tv, "tümü")
+        return get_symbols("tümü")
 
-def fetch_data(tv, symbol, n_bars=100, interval=Interval.in_daily):
+def fetch_data(symbol, n_bars=100, interval=Interval.in_daily):
     """Belirtilen sembol için veri çeker."""
     try:
         data = tv.get_hist(symbol=symbol, exchange="BIST", interval=interval, n_bars=n_bars)
