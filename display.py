@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import os
 import requests
 
-def plot_results(data, symbol, condition, last_price, volume, date, strategy="Default"):
-    """Fiyat ve stratejiye uygun göstergeleri içeren bir grafik oluşturur ve kaydeder."""
+def plot_results(data, symbol, condition, last_price, volume, date, strategy="Default", show_on_screen=False):
+    """Fiyat ve stratejiye uygun göstergeleri içeren bir grafik oluşturur, kaydeder ve isteğe bağlı olarak ekrana gösterir."""
     fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
 
     # Fiyat grafiği
@@ -30,8 +30,12 @@ def plot_results(data, symbol, condition, last_price, volume, date, strategy="De
     file_name = f"{symbol}_{date}_{strategy}.png"
     plt.tight_layout()
     plt.savefig(file_name)
+
+    # Ekrana gösterim
+    if show_on_screen:
+        plt.show()
+
     plt.close()
-    
     return file_name
 
 def send_to_telegram(bot_token, chat_id, file_path, caption):
