@@ -1,44 +1,52 @@
-from tabulate import tabulate
-import pandas as pd
+import matplotlib.pyplot as plt
+import os
 import requests
 
-def send_telegram_message(message, bot_token, chat_id):
-    """Telegram mesajı göndermek için bir işlev."""
-    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": message,
-        "parse_mode": "HTML"
-    }
-    try:
-        response = requests.post(url, json=payload)
-        response.raise_for_status()
-        print("Message sent to Telegram.")
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to send message to Telegram: {e}")
+def plot_results(data, symbol, condition, last_price, volume, date, strategy="Default"):
+    """Fiyat ve stratejiye uygun göstergeleri içeren bir grafik oluşturur ve kaydeder."""
+    fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
 
-def display_results(df, title, max_results=None):
-    """Sonuçları terminalde gösterir."""
-    if not df.empty:
-        if 'Volume' in df.columns:
-            # Bindelik ayraç formatında göstermek için Volume sütununu düzenle
-            df['Volume'] = pd.to_numeric(df['Volume'], errors='coerce').fillna(0).astype(int)
-            df['Volume'] = df['Volume'].apply(lambda x: f"{x:,.0f}")
-        
-        if max_results:
-            df = df.sort_values(by="Volume", ascending=False).head(max_results)
+    # Fiyat grafiği
+    ax1.plot(data['datetime'], data['close'], label="Close Price", color="blue")
+    ax1.set_title(f"{symbol} - {condition} ({strategy})")
+    ax1.set_ylabel("Price")
+    ax1.axhline(last_price, color="green", linestyle="--", label=f"Last Price: {last_price}")
+    ax1.legend()
 
-        print(f"\n=== {title} ===\n")
-        print(tabulate(df, headers='keys', tablefmt='fancy_grid', showindex=False))
+    # Stratejiye bağlı olarak ek göstergeler
+    if "EMA" in strategy:
+        ax1.plot(data['datetime'], data['EMA_Short'], label="EMA Short", color="orange")
+        ax1.plot(data['datetime'], data['EMA_Long'], label="EMA Long", color="purple")
+    if "WMA" in strategy:
+        ax1.plot(data['datetime'], data['WMA_Short'], label="WMA Short", color="red")
+        ax1.plot(data['datetime'], data['WMA_Long'], label="WMA Long", color="brown")
+    if "HMA" in strategy:
+        ax1.plot(data['datetime'], data['HMA_Short'], label="HMA Short", color="cyan")
+        ax1.plot(data['datetime'], data['HMA_Long'], label="HMA Long", color="magenta")
 
-def process_and_send_results(result_df, title, config):
-    """Sonuçları terminalde gösterir ve Telegram'a gönderir."""
-    if not result_df.empty:
-        display_results(result_df, title)
-        
-        headers = result_df.columns.to_list()
-        table_str = tabulate(result_df, headers=headers, tablefmt="grid", showindex=False)
-        
-        # Telegram mesajı formatı
-        message = f"=== {title} ===\n\n<pre>{table_str}</pre>"
-        send_telegram_message(message, config.BOT_TOKEN, config.CHAT_ID)
+    ax1.legend()
+
+    # Dosyayı kaydet
+    file_name = f"{symbol}_{date}_{strategy}.png"
+    plt.tight_layout()
+    plt.savefig(file_name)
+    plt.close()
+    
+    return file_name
+
+def send_to_telegram(bot_token, chat_id, file_path, caption):
+    """Grafiği ve açıklamayı Telegram'a gönderir."""
+    url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
+    with open(file_path, 'rb') as photo:
+        payload = {
+            "chat_id": chat_id,
+            "caption": caption,
+            "parse_mode": "HTML"
+        }
+        files = {"photo": photo}
+        try:
+            response = requests.post(url, data=payload, files=files)
+            response.raise_for_status()
+            print(f"Grafik Telegram'a gönderildi: {file_path}")
+        except requests.exceptions.RequestException as e:
+            print(f"Telegram gönderim hatası: {e}")
