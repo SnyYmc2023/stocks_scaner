@@ -1,19 +1,7 @@
-# config.py
+from tvDatafeed import Interval
 
 class Config:
-    # Telegram Ayarları
-    BOT_TOKEN = "your_bot_token"  # Telegram bot tokenını buraya ekleyin
-    CHAT_ID = "your_chat_id"  # Telegram chat_id'sini buraya ekleyin
-
-    # Tarama Ayarları
-    ENABLE_EMA_SCAN = True
-    ENABLE_NEAR_EMA_SCAN = True
-    ENABLE_WMA_SCAN = True
-    ENABLE_NEAR_WMA_SCAN = True
-    ENABLE_HMA_SCAN = True
-    ENABLE_EMA_13_34_CROSSOVER = True
-
-    # Periyotlar
+    # EMA ve WMA periyotları
     EMA_PERIOD_SHORT = 20
     EMA_PERIOD_LONG = 50
     WMA_PERIOD_SHORT = 20
@@ -21,7 +9,24 @@ class Config:
     HMA_PERIOD_SHORT = 7
     HMA_PERIOD_LONG = 200
 
-    # Diğer Parametreler
+    # Yakınlık eşiği ve hacim filtresi
     NEAR_THRESHOLD = 0.5
     DEFAULT_VOLUME_THRESHOLD = 10
+
+    # Sembol grubu (örneğin, "bist30", "bist50", "bist100")
     SYMBOL_GROUP = "bist50"
+
+    # Zaman dilimi
+    MAIN_TIMEFRAME = Interval.in_daily  # Günlük veriler
+    MTF_TIMEFRAME = Interval.in_4_hour  # 4 saatlik veriler
+
+    # Telegram bilgileri
+    BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+    CHAT_ID = "YOUR_CHAT_ID"
+
+    # Tarama seçenekleri
+    ENABLE_EMA_SCAN = True
+    ENABLE_NEAR_EMA_SCAN = True
+    ENABLE_WMA_SCAN = True
+    ENABLE_NEAR_WMA_SCAN = True
+    ENABLE_HMA_SCAN = True
