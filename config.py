@@ -17,8 +17,8 @@ class Config:
     SYMBOL_GROUP = "bist50"
 
     # Zaman dilimi
-    MAIN_TIMEFRAME = Interval.in_daily  # Günlük veriler
-    MTF_TIMEFRAME = Interval.in_4_hour  # 4 saatlik veriler
+    MAIN_TIMEFRAME = "in_daily"  # Günlük veriler
+    MTF_TIMEFRAME = "in_4_hour"  # 4 saatlik veriler
 
     # Telegram bilgileri
     BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
