@@ -36,11 +36,12 @@ def get_symbols(group="tümü"):
 # TvDatafeed başlatma
 tv = TvDatafeed(username="your_username", password="your_password")  # Anonim giriş yerine kimlik bilgileri
 
-def fetch_data(symbol, n_bars=100, interval=Interval.in_daily):
+def fetch_data(symbol, n_bars=100, interval="in_daily"):
     """Belirtilen sembol için veri çeker."""
     try:
         symbol_cleaned = symbol.replace("BIST:", "")
-        data = tv.get_hist(symbol=symbol_cleaned, exchange="BIST", interval=interval, n_bars=n_bars)
+        interval_enum = getattr(Interval, interval)  # String'i Interval nesnesine dönüştür
+        data = tv.get_hist(symbol=symbol_cleaned, exchange="BIST", interval=interval_enum, n_bars=n_bars)
         if data is not None and not data.empty:
             data.reset_index(inplace=True)
             data['datetime'] = pd.to_datetime(data['datetime'])
