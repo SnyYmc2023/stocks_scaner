@@ -1,5 +1,3 @@
-# data_fetch.py
-
 import pandas as pd
 from tvDatafeed import TvDatafeed, Interval
 import logging
@@ -8,7 +6,6 @@ logger = logging.getLogger()
 
 # TvDatafeed başlatma (kimlik bilgileri olmadan anonim giriş)
 tv = TvDatafeed()
-tv.token="eyJhbGciOiJSUzUxMiIsImtpZCI6IkdaeFUiLCJ0eXAiOiJKV1QifQ.eyJ1c2VyX2lkIjo4ODk2ODQsImV4cCI6MTczMTA2OTIwMCwiaWF0IjoxNzMxMDU0ODAwLCJwbGFuIjoicHJvIiwiZXh0X2hvdXJzIjoxLCJwZXJtIjoiYmlzdCIsInN0dWR5X3Blcm0iOiJ0di12b2x1bWVieXByaWNlLHR2LWNoYXJ0cGF0dGVybnMsUFVCOzZlMWMxNGM1ZmU5MjQ2ZWJiODE2MTJhMmRiNzZlNmQ1LFBVQjs1ODZlZWM1ZDExNzc0MGQ0OTUyZWFjZjVjNGUwY2Q2OCIsIm1heF9zdHVkaWVzIjo1LCJtYXhfZnVuZGFtZW50YWxzIjo0LCJtYXhfY2hhcnRzIjoyLCJtYXhfYWN0aXZlX2FsZXJ0cyI6MjAsIm1heF9zdHVkeV9vbl9zdHVkeSI6MSwiZmllbGRzX3Blcm1pc3Npb25zIjpbInJlZmJvbmRzIl0sIm1heF9vdmVyYWxsX2FsZXJ0cyI6MjAwMCwibWF4X2FjdGl2ZV9wcmltaXRpdmVfYWxlcnRzIjoyMCwibWF4X2FjdGl2ZV9jb21wbGV4X2FsZXJ0cyI6MjAsIm1heF9jb25uZWN0aW9ucyI6MTB9.hGJRaGXtEsLsJZLyatPS3nIrnjWxQquLPHTnJgJp7HknSZASy_x5PxpWQVDK2kH2QA_yTRFFXlKIAgHGmlfYMdqD0-dc2-sdlLTAVf0clznsWz1-uuwx3wD_jbxthAgD0cKPm69DVIzndsQVaMn0pEKRYcWKRUv065DQk9x9D90"
 
 # Sembol grupları için URL'ler
 SYMBOL_GROUP_URLS = {
@@ -21,22 +18,37 @@ SYMBOL_GROUP_URLS = {
 
 def get_symbols(group="tümü"):
     """Belirtilen grup için sembolleri getirir."""
-    if group == "tümü":
-        all_symbols = tv.get_all_symbols(exchange="turkey")
-        return [symbol for symbol in all_symbols if 'BIST:' in symbol]
-    elif group in SYMBOL_GROUP_URLS:
-        url = SYMBOL_GROUP_URLS[group]
-        symbols = pd.read_csv(url, header=None)[0].tolist()
-        return [f'BIST:{symbol}' for symbol in symbols]
-    else:
-        logger.warning(f"Geçersiz grup '{group}'. Varsayılan olarak tüm semboller kullanılacak.")
-        return get_symbols("tümü")
+    try:
+        if group == "tümü":
+            all_symbols = tv.get_all_symbols(exchange="turkey")
+            return [symbol for symbol in all_symbols if 'BIST:' in symbol]
+        elif group in SYMBOL_GROUP_URLS:
+            url = SYMBOL_GROUP_URLS[group]
+            symbols = pd.read_csv(url, header=None)[0].tolist()
+            return [f'BIST:{symbol}' for symbol in symbols]
+        else:
+            logger.warning(f"Geçersiz grup '{group}'. Varsayılan olarak tüm semboller kullanılacak.")
+            return get_symbols("tümü")
+    except Exception as e:
+        logger.error(f"Sembol grupları alınırken hata oluştu: {e}")
+        return []
 
 def fetch_data(symbol, n_bars=100, interval=Interval.in_daily):
     """Belirtilen sembol için veri çeker."""
     try:
+        # Interval türünü string'e çevir
+        if isinstance(interval, Interval):
+            interval = str(interval)
+
+        # Veriyi çek
         data = tv.get_hist(symbol=symbol, exchange="BIST", interval=interval, n_bars=n_bars)
-        return data.reset_index()
+        if data is not None and not data.empty:
+            data.reset_index(inplace=True)
+            data['datetime'] = pd.to_datetime(data['datetime'])  # Tarih sütununu datetime formatına çevir
+            return data
+        else:
+            logger.warning(f"{symbol} için veri bulunamadı.")
+            return pd.DataFrame()
     except Exception as e:
-        logger.error(f"Failed to fetch data for {symbol}: {e}")
-        return None
+        logger.error(f"{symbol} için veri alınırken hata oluştu: {e}")
+        return pd.DataFrame()
