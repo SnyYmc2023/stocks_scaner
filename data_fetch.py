@@ -33,10 +33,12 @@ def get_symbols(group="tümü"):
         logger.error(f"Sembol grupları alınırken hata oluştu: {e}")
         return []
 
+# TvDatafeed başlatma
+tv = TvDatafeed(username="your_username", password="your_password")  # Anonim giriş yerine kimlik bilgileri
+
 def fetch_data(symbol, n_bars=100, interval=Interval.in_daily):
     """Belirtilen sembol için veri çeker."""
     try:
-        # Sembolün 'BIST:' kısmını kaldır
         symbol_cleaned = symbol.replace("BIST:", "")
         data = tv.get_hist(symbol=symbol_cleaned, exchange="BIST", interval=interval, n_bars=n_bars)
         if data is not None and not data.empty:
